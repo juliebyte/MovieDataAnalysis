@@ -1,0 +1,108 @@
+
+
+/* Project 1  */
+/* Query 1 -the query used for the first insight */
+
+WITH family_rental_table
+      AS (SELECT f.title       film_title,
+                 c.name        category_name,
+                 r.rental_date rent_date
+      FROM film f
+          JOIN inventory inv
+            ON f.film_id = inv.film_id
+          JOIN film_category fc
+            ON f.film_id = fc.film_id
+          JOIN category c
+            ON fc.category_id = c.category_id
+          JOIN rental r
+            ON inv.inventory_id = r.inventory_id
+      WHERE c.name IN ('Animation', 'Children', 'Classics', 
+                       'Comedy', 'Family', 'Music'))
+SELECT film_title,
+       category_name,
+       COUNT(rent_date) AS rental_count
+FROM family_rental_table
+GROUP BY 1,
+         2
+ORDER BY 2, 
+         1;
+
+
+/* Query 2, the query used for the second insight */
+
+
+SELECT  f.title,
+        c.name,
+        f.rental_duration,
+        NTILE(4) OVER (ORDER BY rental_duration) AS standard_quartile
+FROM  film f
+      JOIN film_category fc
+        ON f.film_id = fc.film_id
+      JOIN category c
+        ON fc.category_id = c.category_id
+WHERE c.name IN ('Animation', 'Children', 'Classics', 
+                 'Comedy', 'Family', 'Music')
+GROUP BY 1,
+         2,
+         3
+ORDER BY 4, 
+         1;
+
+
+/* Query 3, the query used for the third insight */
+
+SELECT   cat_name,
+         rent_duration,
+         COUNT(*) count_of_movies
+FROM (SELECT  f.title film_title,
+              c.name cat_name,
+              f.rental_duration rent_duration,
+              NTILE(4) OVER (ORDER BY rental_duration) AS standard_quartile
+      FROM  film f
+            JOIN film_category fc
+              ON f.film_id = fc.film_id
+            JOIN category c
+              ON fc.category_id = c.category_id
+      WHERE c.name IN ('Animation', 'Children', 'Classics', 
+                       'Comedy', 'Family', 'Music')  
+      GROUP BY 1,
+               2,
+               3) sub_q
+GROUP BY 1,
+         2
+ORDER BY 1, 
+         2;
+
+
+
+ /* Query 4, the query used for the fourth insight */
+
+WITH monthly_payments_table 
+      AS (SELECT  CONCAT(c.first_name || ' ' || c.last_name) AS full_name, 
+                  p.amount payment_amount,  
+                  DATE_TRUNC('month',p.payment_date) what_month
+          FROM    customer c
+                  JOIN payment p
+                    ON c.customer_id = p.customer_id
+          ORDER BY 1), 
+     highest_payments_table 
+      AS (SELECT CONCAT(c.first_name || ' ' || c.last_name) AS pay_full_name, 
+                  SUM(p.amount)
+          FROM    customer c
+            JOIN  payment p
+              ON  c.customer_id = p.customer_id
+          GROUP BY 1
+          ORDER BY 2 DESC
+          LIMIT    10)
+ SELECT   monthly_payments_table.what_month,  
+          monthly_payments_table.full_name, 
+          COUNT(*) AS count_payments,
+          SUM(monthly_payments_table.payment_amount)  
+ FROM     monthly_payments_table
+          JOIN highest_payments_table
+            ON monthly_payments_table.full_name = highest_payments_table.pay_full_name
+ GROUP BY 2,
+          1
+ ORDER BY 2,
+          1,
+          4; 
